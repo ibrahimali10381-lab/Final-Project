@@ -20,7 +20,7 @@ char grid[][] = {
   {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
   {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
   {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
-  {'p', 'p', 'p', 'p', 'p', 'p', 'p', ' '},
+  {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
   {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'}
 };
 
@@ -129,7 +129,7 @@ void mouseReleased() {
 
         firstClick = true;
         tactile = false;
-        turn = true;
+        turn = false;
       } else {
         firstClick = true;
         tactile = false;
@@ -159,6 +159,9 @@ boolean checkPiece() {
 boolean isValidMove(int r1, int c1, int r2, int c2) {
   char piece = grid[r1][c1];
   char target = grid[r2][c2];
+
+  int rowDiff = abs(r2 - r1);
+  int colDiff = abs(c2 - c1);
 
   if (target != ' ') {
     boolean whitePiece = Character.isLowerCase(piece);
@@ -201,13 +204,32 @@ boolean isValidMove(int r1, int c1, int r2, int c2) {
       return false;
     }
   } else if (type == 'b') {
-    int rowDiff = abs(r2 - r1);
-    int colDiff = abs(c2 - c1);
 
     if (rowDiff != colDiff) {
       return false;
     }
     return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
+  } else if ( type == 'q') {
+    if (r1 ==r2 || c1==c2) {
+      return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
+    }
+
+    if (rowDiff != colDiff) {
+      return false;
+    }
+    return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
+  } else if (type == 'n') {
+    if ( (rowDiff == 2 && colDiff==1) || (colDiff == 2 && rowDiff==1)) {
+      return true;
+    } else {
+      return false;
+    }
+  }else if (type == 'k') {
+    if ((rowDiff == 1 && colDiff ==1) || (rowDiff + colDiff ==1)) {
+      return true;
+    } else {
+      return false;
+    }
   } else {
 
     return false;

@@ -9,7 +9,8 @@ PImage brook, bbishop, bknight, bqueen, bking, bpawn;
 boolean firstClick;
 int row1, col1, row2, col2;
 boolean tactile;
-
+boolean correctPiece;
+boolean turn;
 
 char grid[][] = {
   {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'},
@@ -26,7 +27,7 @@ void setup() {
   size(800, 800);
 
 
-  myClient = new Client (this, "127.0.0.1", 1234);
+  myClient = new Client (this, "10.32.43.46", 1234); 
 
 
   firstClick = true;
@@ -52,7 +53,8 @@ void draw() {
 
   drawBoard();
   drawPieces();
-
+  
+  correctPiece = checkPiece();
   recieveMove();
 }
 
@@ -66,6 +68,7 @@ void recieveMove() {
 
     grid[r2][c2] = grid[r1][c1] ;
     grid[r1][c1] = ' ';
+    turn = true;
   }
 }
 
@@ -105,20 +108,32 @@ void drawPieces() {
 }
 
 void mouseReleased() {
-  if (firstClick) {
+  if (firstClick && correctPiece && turn) {
     row1 = mouseY/100;
     col1 = mouseX/100;
-    firstClick = false;
-    tactile = true;
-  } else {
+    if (row1 >= 0 && row1 < 8 && col1 >= 0 && col1 < 8 && grid[row1][col1] != ' ') {
+      firstClick = false;
+      tactile = true;
+    }
+  } else if (!firstClick && turn) {
     row2 = mouseY/100;
     col2 = mouseX/100;
-    if (!(row2 == row1 && col2 == col1)) {
-      grid[row2][col2] = grid[row1][col1];
-      grid[row1][col1] = ' ';
-      myClient.write(row1 + "," + col1 + "," + row2 +"," + col2);
-      firstClick = true;
-      tactile = false;
+
+    if (row2 >= 0 && row2 < 8 && col2 >= 0 && col2 < 8) {
+
+      if ((row2 != row1 || col2 != col1) && isValidMove(row1, col1, row2, col2)) {
+        grid[row2][col2] = grid[row1][col1];
+        grid[row1][col1] = ' ';
+
+        myClient.write(row1 + "," + col1 + "," + row2 + "," + col2);
+
+        firstClick = true;
+        tactile = false;
+        turn = false;
+      } else {
+        firstClick = true;
+        tactile = false;
+      }
     }
   }
 }
@@ -130,4 +145,104 @@ void tactilePiece() {
     strokeWeight(5);
     rect(col1*100, row1*100, 100, 100);
   }
+}
+
+boolean checkPiece() {
+  if (grid[mouseY/100][mouseX/100] == 'R' ||grid[mouseY/100][mouseX/100] == 'B' ||grid[mouseY/100][mouseX/100] == 'N' ||grid[mouseY/100][mouseX/100] == 'Q' ||grid[mouseY/100][mouseX/100] == 'K' ||grid[mouseY/100][mouseX/100] == 'P') {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+
+boolean isValidMove(int r1, int c1, int r2, int c2) {
+  char piece = grid[r1][c1];
+  char target = grid[r2][c2];
+
+  int rowDiff = abs(r2 - r1);
+  int colDiff = abs(c2 - c1);
+
+  if (target != ' ') {
+    boolean blackPiece = Character.isUpperCase(piece);
+    boolean blackTarget = Character.isUpperCase(target);
+    if (blackPiece == blackTarget) return false;
+  }
+
+
+
+  int checkRow;
+  if (r2 == r1) {
+    checkRow = 0;
+  } else if (r2 > r1) {
+    checkRow = 1;
+  } else {
+    checkRow = -1;
+  }
+
+  int checkCol;
+  if (c2 == c1) {
+    checkCol = 0;
+  } else if (c2 > c1) {
+    checkCol = 1;
+  } else {
+    checkCol = -1;
+  }
+  char type = Character.toUpperCase(piece);
+
+
+  if (type == 'P') {
+    if ((r2-r1 == 1 && (c2==c1 || target != ' ')) || (r1 == 1 && r2-r1== 2)) {
+      return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
+    } else {
+      return false;
+    }
+  } else if (type == 'R') {
+    if (r1 ==r2 || c1==c2) {
+      return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
+    } else {
+      return false;
+    }
+  } else if (type == 'B') {
+
+    if (rowDiff != colDiff) {
+      return false;
+    }
+    return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
+  } else if ( type == 'Q') {
+    if (r1 ==r2 || c1==c2) {
+      return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
+    }
+
+    if (rowDiff != colDiff) {
+      return false;
+    }
+    return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
+  } else if (type == 'N') {
+    if ( (rowDiff == 2 && colDiff==1) || (colDiff == 2 && rowDiff==1)) {
+      return true;
+    } else {
+      return false;
+    }
+  }else if (type == 'K') {
+    if ((rowDiff == 1 && colDiff ==1) || (rowDiff + colDiff ==1)) {
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+
+    return false;
+  }
+}
+
+boolean isPathClear(int r1, int c1, int r2, int c2, int checkRow, int checkCol) {
+  int currR = r1 + checkRow;
+  int currC = c1 + checkCol;
+  while (currR != r2 || currC != c2) {
+    if (grid[currR][currC] != ' ') return false;
+    currR += checkRow;
+    currC += checkCol;
+  }
+  return true;
 }
