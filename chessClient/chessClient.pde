@@ -11,6 +11,10 @@ int row1, col1, row2, col2;
 boolean tactile;
 boolean correctPiece;
 boolean turn;
+boolean kingMoved   = false;
+boolean rookLMoved  = false;
+boolean rookRMoved  = false;
+boolean enPassent;
 
 char grid[][] = {
   {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'},
@@ -27,7 +31,7 @@ void setup() {
   size(800, 800);
 
 
-  myClient = new Client (this, "10.32.43.46", 1234); 
+  myClient = new Client (this, "10.32.43.46", 1234);
 
 
   firstClick = true;
@@ -53,7 +57,7 @@ void draw() {
 
   drawBoard();
   drawPieces();
-  
+
   correctPiece = checkPiece();
   recieveMove();
 }
@@ -66,12 +70,22 @@ void recieveMove() {
     int r2 = int(incoming.substring(4, 5));
     int c2 = int(incoming.substring(6, 7));
 
-    grid[r2][c2] = grid[r1][c1] ;
+    char movingPiece = grid[r1][c1];
+
+    if (movingPiece == 'k' && r1 == 7 && c1 == 4 && c2 == 6) {
+      grid[7][5] = 'r';
+      grid[7][7] = ' ';
+    }
+    if (movingPiece == 'k' && r1 == 7 && c1 == 4 && c2 == 2) {
+      grid[7][3] = 'r';
+      grid[7][0] = ' ';
+    }
+
+    grid[r2][c2] = grid[r1][c1];
     grid[r1][c1] = ' ';
     turn = true;
   }
 }
-
 
 
 void drawBoard() {
@@ -119,24 +133,36 @@ void mouseReleased() {
     row2 = mouseY/100;
     col2 = mouseX/100;
 
-    if (row2 >= 0 && row2 < 8 && col2 >= 0 && col2 < 8) {
+    if ((row2 != row1 || col2 != col1) && isValidMove(row1, col1, row2, col2)) {
 
-      if ((row2 != row1 || col2 != col1) && isValidMove(row1, col1, row2, col2)) {
-        grid[row2][col2] = grid[row1][col1];
-        grid[row1][col1] = ' ';
+      char movingPiece = grid[row1][col1];
 
-        myClient.write(row1 + "," + col1 + "," + row2 + "," + col2);
-
-        firstClick = true;
-        tactile = false;
-        turn = false;
-      } else {
-        firstClick = true;
-        tactile = false;
+      if (movingPiece == 'K' && col1 == 4 && col2 == 6) {
+        grid[0][5] = 'R';
+        grid[0][7] = ' ';
       }
+      if (movingPiece == 'K' && col1 == 4 && col2 == 2) {
+        grid[0][3] = 'R';
+        grid[0][0] = ' ';
+      }
+
+      if (movingPiece == 'K') kingMoved = true;
+      if (movingPiece == 'R' && row1 == 0 && col1 == 0) rookLMoved = true;
+      if (movingPiece == 'R' && row1 == 0 && col1 == 7) rookRMoved = true;
+      grid[row2][col2] = grid[row1][col1];
+      grid[row1][col1] = ' ';
+      myClient.write(row1 + "," + col1 + "," + row2 + "," + col2);
+
+      firstClick = true;
+      tactile = false;
+      turn = false;
+    } else {
+      firstClick = true;
+      tactile = false;
     }
   }
 }
+
 
 void tactilePiece() {
   if (tactile == true) {
@@ -192,9 +218,13 @@ boolean isValidMove(int r1, int c1, int r2, int c2) {
 
 
   if (type == 'P') {
-    if ((r2-r1 == 1 && (c2==c1 || target != ' ')) || (r1 == 1 && r2-r1== 2)) {
+    if ((r2-r1 == 1 && ((c2==c1 && target == ' ')||(colDiff == 1 && target != ' '))) || (r1 == 1 && r2-r1== 2)) {
       return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
-    } else {
+    } else if (r2-r1 == 1  || (r1 == 1 && r2-r1== 2)) {
+      enPassent = true;
+      grid[r2+1][c2] = 'e';
+      return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
+    }else {
       return false;
     }
   } else if (type == 'R') {
@@ -224,12 +254,20 @@ boolean isValidMove(int r1, int c1, int r2, int c2) {
     } else {
       return false;
     }
-  }else if (type == 'K') {
-    if ((rowDiff == 1 && colDiff ==1) || (rowDiff + colDiff ==1)) {
+  } else if (type == 'K') {
+    if ((rowDiff == 1 && colDiff == 1) || (rowDiff + colDiff == 1)) {
       return true;
-    } else {
-      return false;
     }
+
+    if (!kingMoved && r1 == 0 && c1 == 4 && r2 == 0) {
+      if (c2 == 6 && !rookRMoved) {
+        return isPathClear(0, 4, 0, 7, 0, 1);
+      }
+      if (c2 == 2 && !rookLMoved) {
+        return isPathClear(0, 4, 0, 0, 0, -1);
+      }
+    }
+    return false;
   } else {
 
     return false;
