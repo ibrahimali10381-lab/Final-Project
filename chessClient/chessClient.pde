@@ -10,7 +10,7 @@ boolean firstClick;
 int row1, col1, row2, col2;
 boolean tactile;
 boolean correctPiece;
-boolean turn;
+boolean turn = false;
 boolean kingMoved   = false;
 boolean rookLMoved  = false;
 boolean rookRMoved  = false;
@@ -28,21 +28,15 @@ char grid[][] = {
 };
 
 void setup() {
-  size(800, 800);
-
-
-  myClient = new Client (this, "10.32.43.46", 1234);
-
-
+  size(1200, 800);
+  myClient = new Client(this, "10.32.43.46", 1234);
   firstClick = true;
-
   brook = loadImage("blackRook.png");
   bbishop = loadImage("blackBishop.png");
   bknight = loadImage("blackKnight.png");
   bqueen = loadImage("blackQueen.png");
   bking = loadImage("blackKing.png");
   bpawn = loadImage("blackPawn.png");
-
   wrook = loadImage("whiteRook.png");
   wbishop = loadImage("whiteBishop.png");
   wknight = loadImage("whiteKnight.png");
@@ -54,10 +48,8 @@ void setup() {
 void draw() {
   stroke(0);
   strokeWeight(0);
-
   drawBoard();
   drawPieces();
-
   correctPiece = checkPiece();
   recieveMove();
 }
@@ -69,9 +61,14 @@ void recieveMove() {
     int c1 = int(incoming.substring(2, 3));
     int r2 = int(incoming.substring(4, 5));
     int c2 = int(incoming.substring(6, 7));
-
     char movingPiece = grid[r1][c1];
-
+    
+    for (int r = 0; r < 8; r++) {
+      for (int c = 0; c < 8; c++) {
+        if (grid[r][c] == 'e' || grid[r][c] == 'E') grid[r][c] = ' ';
+      }
+    }
+    
     if (movingPiece == 'k' && r1 == 7 && c1 == 4 && c2 == 6) {
       grid[7][5] = 'r';
       grid[7][7] = ' ';
@@ -80,18 +77,23 @@ void recieveMove() {
       grid[7][3] = 'r';
       grid[7][0] = ' ';
     }
-
+    if (movingPiece == 'p' && r1 - r2 == 2) {
+      grid[5][c1] = 'e';
+    }
+    if (movingPiece == 'p' && r1 - r2 == 1 && abs(c2 - c1) == 1 && grid[r2][c2] == ' ') {
+      grid[r2 + 1][c2] = ' ';
+    }
+    
     grid[r2][c2] = grid[r1][c1];
     grid[r1][c1] = ' ';
     turn = true;
   }
 }
 
-
 void drawBoard() {
   for (int r = 0; r < 8; r++) {
     for (int c = 0; c < 8; c++) {
-      if ( (r%2) == (c%2) ) {
+      if ((r%2) == (c%2)) {
         fill(lightbrown);
       } else {
         fill(darkbrown);
@@ -105,18 +107,18 @@ void drawPieces() {
   tactilePiece();
   for (int r = 0; r < 8; r++) {
     for (int c = 0; c < 8; c++) {
-      if (grid[r][c] == 'r') image (wrook, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'R') image (brook, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'b') image (wbishop, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'B') image (bbishop, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'n') image (wknight, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'N') image (bknight, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'q') image (wqueen, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'Q') image (bqueen, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'k') image (wking, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'K') image (bking, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'p') image (wpawn, c*100, r*100, 100, 100);
-      if (grid[r][c] == 'P') image (bpawn, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'r') image(wrook, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'R') image(brook, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'b') image(wbishop, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'B') image(bbishop, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'n') image(wknight, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'N') image(bknight, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'q') image(wqueen, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'Q') image(bqueen, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'k') image(wking, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'K') image(bking, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'p') image(wpawn, c*100, r*100, 100, 100);
+      if (grid[r][c] == 'P') image(bpawn, c*100, r*100, 100, 100);
     }
   }
 }
@@ -132,71 +134,83 @@ void mouseReleased() {
   } else if (!firstClick && turn) {
     row2 = mouseY/100;
     col2 = mouseX/100;
-
-    if ((row2 != row1 || col2 != col1) && isValidMove(row1, col1, row2, col2)) {
-
-      char movingPiece = grid[row1][col1];
-
-      if (movingPiece == 'K' && col1 == 4 && col2 == 6) {
-        grid[0][5] = 'R';
-        grid[0][7] = ' ';
+    if (row2 >= 0 && row2 < 8 && col2 >= 0 && col2 < 8) {
+      if ((row2 != row1 || col2 != col1) && isValidMove(row1, col1, row2, col2)) {
+        char movingPiece = grid[row1][col1];
+        
+        for (int r = 0; r < 8; r++) {
+          for (int c = 0; c < 8; c++) {
+            if (grid[r][c] == 'E') grid[r][c] = ' ';
+          }
+        }
+        
+        if (movingPiece == 'K' && col1 == 4 && col2 == 6) {
+          grid[0][5] = 'R';
+          grid[0][7] = ' ';
+        }
+        if (movingPiece == 'K' && col1 == 4 && col2 == 2) {
+          grid[0][3] = 'R';
+          grid[0][0] = ' ';
+        }
+        if (movingPiece == 'K') kingMoved = true;
+        if (movingPiece == 'R' && row1 == 0 && col1 == 0) rookLMoved = true;
+        if (movingPiece == 'R' && row1 == 0 && col1 == 7) rookRMoved = true;
+        
+        if (movingPiece == 'P' && row1 == 1 && row2 - row1 == 2) {
+          grid[2][col1] = 'E';
+        }
+        if (movingPiece == 'P' && grid[row2][col2] == 'e') {
+          grid[row2 - 1][col2] = ' ';
+        }
+        
+        grid[row2][col2] = grid[row1][col1];
+        grid[row1][col1] = ' ';
+        myClient.write(row1 + "," + col1 + "," + row2 + "," + col2);
+        firstClick = true;
+        tactile = false;
+        turn = false;
+      } else {
+        firstClick = true;
+        tactile = false;
       }
-      if (movingPiece == 'K' && col1 == 4 && col2 == 2) {
-        grid[0][3] = 'R';
-        grid[0][0] = ' ';
-      }
-
-      if (movingPiece == 'K') kingMoved = true;
-      if (movingPiece == 'R' && row1 == 0 && col1 == 0) rookLMoved = true;
-      if (movingPiece == 'R' && row1 == 0 && col1 == 7) rookRMoved = true;
-      grid[row2][col2] = grid[row1][col1];
-      grid[row1][col1] = ' ';
-      myClient.write(row1 + "," + col1 + "," + row2 + "," + col2);
-
-      firstClick = true;
-      tactile = false;
-      turn = false;
-    } else {
-      firstClick = true;
-      tactile = false;
     }
   }
 }
-
 
 void tactilePiece() {
   if (tactile == true) {
     noFill();
     stroke(255, 0, 0);
-    strokeWeight(5);
+    makeStrokeWeightSafe(5);
     rect(col1*100, row1*100, 100, 100);
   }
 }
 
+void makeStrokeWeightSafe(int w) {
+  strokeWeight(w);
+}
+
 boolean checkPiece() {
-  if (grid[mouseY/100][mouseX/100] == 'R' ||grid[mouseY/100][mouseX/100] == 'B' ||grid[mouseY/100][mouseX/100] == 'N' ||grid[mouseY/100][mouseX/100] == 'Q' ||grid[mouseY/100][mouseX/100] == 'K' ||grid[mouseY/100][mouseX/100] == 'P') {
+  int r = mouseY/100;
+  int c = mouseX/100;
+  if (r < 0 || r >= 8 || c < 0 || c >= 8) return false;
+  if (grid[r][c] == 'R' || grid[r][c] == 'B' || grid[r][c] == 'N' || grid[r][c] == 'Q' || grid[r][c] == 'K' || grid[r][c] == 'P') {
     return true;
   } else {
     return false;
   }
 }
 
-
 boolean isValidMove(int r1, int c1, int r2, int c2) {
   char piece = grid[r1][c1];
   char target = grid[r2][c2];
-
   int rowDiff = abs(r2 - r1);
   int colDiff = abs(c2 - c1);
-
-  if (target != ' ') {
+  if (target != ' ' && target != 'e' && target != 'E') {
     boolean blackPiece = Character.isUpperCase(piece);
     boolean blackTarget = Character.isUpperCase(target);
     if (blackPiece == blackTarget) return false;
   }
-
-
-
   int checkRow;
   if (r2 == r1) {
     checkRow = 0;
@@ -205,7 +219,6 @@ boolean isValidMove(int r1, int c1, int r2, int c2) {
   } else {
     checkRow = -1;
   }
-
   int checkCol;
   if (c2 == c1) {
     checkCol = 0;
@@ -215,41 +228,36 @@ boolean isValidMove(int r1, int c1, int r2, int c2) {
     checkCol = -1;
   }
   char type = Character.toUpperCase(piece);
-
-
   if (type == 'P') {
-    if ((r2-r1 == 1 && ((c2==c1 && target == ' ')||(colDiff == 1 && target != ' '))) || (r1 == 1 && r2-r1== 2)) {
+    if (r2 - r1 == 1 && c1 == c2 && target == ' ') {
+      return true;
+    } else if (r1 == 1 && r2 - r1 == 2 && c1 == c2 && target == ' ') {
       return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
-    } else if (r2-r1 == 1  || (r1 == 1 && r2-r1== 2)) {
-      enPassent = true;
-      grid[r2+1][c2] = 'e';
-      return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
-    }else {
-      return false;
+    } else if (r2 - r1 == 1 && colDiff == 1 && (target != ' ' || target == 'e')) {
+      return true;
     }
+    return false;
   } else if (type == 'R') {
-    if (r1 ==r2 || c1==c2) {
+    if (r1 == r2 || c1 == c2) {
       return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
     } else {
       return false;
     }
   } else if (type == 'B') {
-
     if (rowDiff != colDiff) {
       return false;
     }
     return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
-  } else if ( type == 'Q') {
-    if (r1 ==r2 || c1==c2) {
+  } else if (type == 'Q') {
+    if (r1 == r2 || c1 == c2) {
       return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
     }
-
     if (rowDiff != colDiff) {
       return false;
     }
     return isPathClear(r1, c1, r2, c2, checkRow, checkCol);
   } else if (type == 'N') {
-    if ( (rowDiff == 2 && colDiff==1) || (colDiff == 2 && rowDiff==1)) {
+    if ((rowDiff == 2 && colDiff == 1) || (colDiff == 2 && rowDiff == 1)) {
       return true;
     } else {
       return false;
@@ -258,7 +266,6 @@ boolean isValidMove(int r1, int c1, int r2, int c2) {
     if ((rowDiff == 1 && colDiff == 1) || (rowDiff + colDiff == 1)) {
       return true;
     }
-
     if (!kingMoved && r1 == 0 && c1 == 4 && r2 == 0) {
       if (c2 == 6 && !rookRMoved) {
         return isPathClear(0, 4, 0, 7, 0, 1);
@@ -269,7 +276,6 @@ boolean isValidMove(int r1, int c1, int r2, int c2) {
     }
     return false;
   } else {
-
     return false;
   }
 }
@@ -278,7 +284,7 @@ boolean isPathClear(int r1, int c1, int r2, int c2, int checkRow, int checkCol) 
   int currR = r1 + checkRow;
   int currC = c1 + checkCol;
   while (currR != r2 || currC != c2) {
-    if (grid[currR][currC] != ' ') return false;
+    if (grid[currR][currC] != ' ' && grid[currR][currC] != 'E' && grid[currR][currC] != 'e') return false;
     currR += checkRow;
     currC += checkCol;
   }
