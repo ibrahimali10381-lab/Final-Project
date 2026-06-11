@@ -16,6 +16,9 @@ boolean rookLMoved  = false;
 boolean rookRMoved  = false;
 boolean enPassent;
 
+boolean promoting = false;
+int promoRow, promoCol;
+
 char grid[][] = {
   {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'},
   {'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
@@ -50,6 +53,7 @@ void draw() {
   strokeWeight(0);
   drawBoard();
   drawPieces();
+  drawSidebar();
   correctPiece = checkPiece();
   recieveMove();
 }
@@ -62,6 +66,12 @@ void recieveMove() {
     int c1 = int(incoming.substring(2, 3));
     int r2 = int(incoming.substring(4, 5));
     int c2 = int(incoming.substring(6, 7));
+    
+    char promoChar = ' ';
+    if (incoming.length() >= 9) {
+      promoChar = incoming.charAt(8);
+    }
+    
     char movingPiece = grid[r1][c1];
     
     for (int r = 0; r < 8; r++) {
@@ -85,7 +95,7 @@ void recieveMove() {
       grid[r2 - 1][c2] = ' ';
     }
     
-    grid[r2][c2] = grid[r1][c1];
+    grid[r2][c2] = (promoChar != ' ') ? promoChar : grid[r1][c1];
     grid[r1][c1] = ' ';
     turn = true;
   }
@@ -124,7 +134,65 @@ void drawPieces() {
   }
 }
 
+void drawSidebar() {
+  fill(50);
+  rect(800, 0, 400, 800);
+  
+  if (promoting) {
+    fill(255);
+    textSize(24);
+    textAlign(CENTER, CENTER);
+    text("PROMOTE PAWN:", 1000, 100);
+    
+    for (int i = 0; i < 4; i++) {
+      fill(70);
+      stroke(255);
+      strokeWeight(2);
+      rect(900, 180 + (i * 120), 200, 90);
+      
+      if (mouseX >= 900 && mouseX <= 1100 && mouseY >= 180 + (i * 120) && mouseY <= 270 + (i * 120)) {
+        fill(100, 100, 255, 50);
+        rect(900, 180 + (i * 120), 200, 90);
+      }
+    }
+    
+    // Stamp choices inside UI panels
+    image(wqueen, 950, 195, 60, 60);
+    image(wrook, 950, 315, 60, 60);
+    image(wbishop, 950, 435, 60, 60);
+    image(wknight, 950, 555, 60, 60);
+  } else {
+    fill(150);
+    textSize(20);
+    textAlign(CENTER, CENTER);
+    if (turn) {
+      text("Your Turn (White)", 1000, 400);
+    } else {
+      text("Waiting for Black...", 1000, 400);
+    }
+  }
+}
+
 void mouseReleased() {
+  if (promoting && turn) {
+    if (mouseX >= 900 && mouseX <= 1100) {
+      char finalSelection = ' ';
+      if (mouseY >= 180 && mouseY <= 270)       finalSelection = 'q';
+      else if (mouseY >= 300 && mouseY <= 390)  finalSelection = 'r';
+      else if (mouseY >= 420 && mouseY <= 510)  finalSelection = 'b';
+      else if (mouseY >= 540 && mouseY <= 630)  finalSelection = 'n';
+      
+      if (finalSelection != ' ') {
+        grid[promoRow][promoCol] = finalSelection;
+        myServer.write(row1 + "," + col1 + "," + promoRow + "," + promoCol + "," + finalSelection);
+        promoting = false;
+        firstClick = true;
+        tactile = false;
+        turn = false;
+      }
+    }
+  }
+
   if (firstClick && correctPiece && turn) {
     row1 = mouseY/100;
     col1 = mouseX/100;
@@ -166,10 +234,17 @@ void mouseReleased() {
         
         grid[row2][col2] = grid[row1][col1];
         grid[row1][col1] = ' ';
-        myServer.write(row1 + "," + col1 + "," + row2 + "," + col2);
-        firstClick = true;
-        tactile = false;
-        turn = false;
+        
+        if (movingPiece == 'p' && row2 == 0) {
+          promoting = true;
+          promoRow = row2;
+          promoCol = col2;
+        } else {
+          myServer.write(row1 + "," + col1 + "," + row2 + "," + col2 + ", ");
+          firstClick = true;
+          tactile = false;
+          turn = false;
+        }
       } else {
         firstClick = true;
         tactile = false;
